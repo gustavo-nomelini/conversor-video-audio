@@ -67,10 +67,25 @@ class DownloadThread(QThread):
                 'progress_hooks': [self.progress_hook],
                 'quiet': True,
                 'no_warnings': True,
+                'noplaylist': True,  # --no-playlist
+                # Configurações para evitar bloqueio de bot e erro 403
+                'extractor_args': {
+                    'youtube': {
+                        'player_client': ['android', 'ios', 'web'],
+                        'skip': ['hls', 'dash'],
+                    }
+                },
+                'http_headers': {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                    'Accept-Language': 'en-us,en;q=0.5',
+                    'Sec-Fetch-Mode': 'navigate',
+                },
             }
             
             # Configurações específicas por tipo de download
             if self.download_type == 'mp4':
+                # Parâmetros: -f "bv*[ext=mp4]+ba[ext=m4a]/mp4" --merge-output-format mp4 --no-playlist
                 ydl_opts.update({
                     'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',
                     'outtmpl': os.path.join(self.output_path, '%(title)s.%(ext)s'),
@@ -79,14 +94,16 @@ class DownloadThread(QThread):
                 self.progress.emit("Iniciando download do vídeo em MP4...")
                 
             elif self.download_type == 'mp3':
+                # Parâmetros: -f bestaudio -x --audio-format mp3 --audio-quality 0 --no-playlist
                 ydl_opts.update({
-                    'format': 'bestaudio/best',
+                    'format': 'bestaudio',
                     'outtmpl': os.path.join(self.output_path, '%(title)s.%(ext)s'),
                     'postprocessors': [{
                         'key': 'FFmpegExtractAudio',
                         'preferredcodec': 'mp3',
-                        'preferredquality': '192',
+                        'preferredquality': '0',  # 0 = melhor qualidade
                     }],
+                    'extractaudio': True,  # -x
                 })
                 self.progress.emit("Iniciando extração de áudio em MP3...")
             
@@ -187,7 +204,7 @@ class YouTubeDownloaderGUI(QMainWindow):
         self.radio_mp4 = QRadioButton("🎥 Vídeo MP4 (melhor qualidade)")
         self.radio_mp4.setChecked(True)
         
-        self.radio_mp3 = QRadioButton("🎵 Áudio MP3 (apenas áudio, 192kbps)")
+        self.radio_mp3 = QRadioButton("🎵 Áudio MP3 (apenas áudio, melhor qualidade)")
         
         self.button_group.addButton(self.radio_mp4)
         self.button_group.addButton(self.radio_mp3)
@@ -238,7 +255,7 @@ class YouTubeDownloaderGUI(QMainWindow):
                 border: 1px solid #ddd;
                 border-radius: 5px;
                 padding: 5px;
-                font-family: 'Courier New', monospace;
+                font-family: 'Courier New', 'Monaco', monospace;
             }
         """)
         main_layout.addWidget(self.log_text)
