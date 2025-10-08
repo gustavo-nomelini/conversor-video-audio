@@ -308,78 +308,112 @@ class YouTubeDownloaderGUI(QMainWindow):
     def init_ui(self):
         """Inicializa a interface do usuário"""
         self.setWindowTitle("Conversor de Vídeo/Áudio - MP4 & MP3")
-        self.setMinimumSize(800, 750)
+        self.setMinimumSize(850, 800)
         
-        # Aplica tema moderno
+        # Aplica tema moderno com alto contraste (compatível com tema escuro)
         self.setStyleSheet("""
             QMainWindow {
-                background-color: #f5f7fa;
+                background-color: #1a1a1a;
+            }
+            QScrollArea {
+                background-color: #1a1a1a;
+                border: none;
+            }
+            QWidget {
+                background-color: #1a1a1a;
+                color: #ffffff;
             }
             QGroupBox {
-                background-color: white;
-                border: 2px solid #e1e8ed;
-                border-radius: 8px;
-                margin-top: 12px;
-                padding-top: 15px;
+                background-color: #2d2d2d;
+                border: 3px solid #4a9eff;
+                border-radius: 10px;
+                margin-top: 16px;
+                padding-top: 20px;
                 font-weight: bold;
-                font-size: 11pt;
+                font-size: 14pt;
+                color: #ffffff;
             }
             QGroupBox::title {
                 subcontrol-origin: margin;
-                left: 15px;
-                padding: 0 8px;
-                color: #1a73e8;
+                left: 20px;
+                padding: 0 10px;
+                color: #4a9eff;
+                font-size: 14pt;
+            }
+            QLabel {
+                color: #ffffff;
+                font-size: 13pt;
+                background-color: transparent;
             }
             QLineEdit {
-                padding: 10px 15px;
-                border: 2px solid #e1e8ed;
-                border-radius: 6px;
-                background-color: white;
-                font-size: 10pt;
-                selection-background-color: #1a73e8;
+                padding: 14px 18px;
+                border: 3px solid #4a4a4a;
+                border-radius: 8px;
+                background-color: #2d2d2d;
+                color: #ffffff;
+                font-size: 13pt;
+                selection-background-color: #4a9eff;
+                selection-color: #ffffff;
             }
             QLineEdit:focus {
-                border: 2px solid #1a73e8;
-                background-color: #f8f9fa;
+                border: 3px solid #4a9eff;
+                background-color: #353535;
             }
             QLineEdit:disabled {
-                background-color: #f5f5f5;
-                color: #888;
+                background-color: #252525;
+                color: #666666;
+                border: 3px solid #333333;
+            }
+            QLineEdit::placeholder {
+                color: #888888;
             }
             QRadioButton {
-                spacing: 8px;
-                font-size: 10pt;
-                padding: 5px;
+                spacing: 12px;
+                font-size: 13pt;
+                padding: 8px;
+                color: #ffffff;
+                font-weight: bold;
             }
             QRadioButton::indicator {
-                width: 18px;
-                height: 18px;
+                width: 22px;
+                height: 22px;
             }
             QRadioButton::indicator:unchecked {
-                border: 2px solid #999;
-                border-radius: 9px;
-                background-color: white;
+                border: 3px solid #4a9eff;
+                border-radius: 11px;
+                background-color: #2d2d2d;
             }
             QRadioButton::indicator:checked {
-                border: 2px solid #1a73e8;
-                border-radius: 9px;
-                background-color: #1a73e8;
+                border: 3px solid #4a9eff;
+                border-radius: 11px;
+                background-color: #4a9eff;
             }
             QRadioButton:hover {
-                color: #1a73e8;
+                color: #4a9eff;
             }
             QProgressBar {
-                border: 2px solid #e1e8ed;
-                border-radius: 6px;
+                border: 3px solid #4a4a4a;
+                border-radius: 8px;
                 text-align: center;
                 font-weight: bold;
-                font-size: 10pt;
-                background-color: white;
+                font-size: 13pt;
+                background-color: #2d2d2d;
+                color: #ffffff;
             }
             QProgressBar::chunk {
                 background-color: qlineargradient(x1:0, y1:0, x2:1, y2:0,
-                    stop:0 #1a73e8, stop:1 #4285f4);
-                border-radius: 4px;
+                    stop:0 #4a9eff, stop:1 #64b5f6);
+                border-radius: 5px;
+            }
+            QTextEdit {
+                background-color: #2d2d2d;
+                border: 3px solid #4a4a4a;
+                border-radius: 8px;
+                padding: 15px;
+                font-family: 'SF Mono', 'Menlo', 'Monaco', 'Courier New', monospace;
+                font-size: 12pt;
+                color: #ffffff;
+                line-height: 1.6;
             }
         """)
         
@@ -397,49 +431,53 @@ class YouTubeDownloaderGUI(QMainWindow):
         main_layout.setSpacing(20)
         main_layout.setContentsMargins(25, 25, 25, 25)
         
-        # Cabeçalho com gradiente
+        # Cabeçalho com gradiente vibrante
         header_widget = QWidget()
         header_widget.setStyleSheet("""
             QWidget {
                 background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
-                    stop:0 #1a73e8, stop:1 #4285f4);
-                border-radius: 12px;
-                padding: 20px;
+                    stop:0 #4a9eff, stop:1 #2979ff);
+                border-radius: 15px;
+                padding: 25px;
             }
         """)
         header_layout = QVBoxLayout()
-        header_layout.setSpacing(8)
+        header_layout.setSpacing(12)
         
         # Título
         title_label = QLabel("🎬 Conversor de Vídeo/Áudio")
         title_font = QFont()
-        title_font.setPointSize(24)
+        title_font.setPointSize(28)
         title_font.setBold(True)
         title_label.setFont(title_font)
         title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        title_label.setStyleSheet("color: white; background: transparent;")
+        title_label.setStyleSheet("color: #ffffff; background: transparent; font-weight: 900;")
         header_layout.addWidget(title_label)
         
         # Subtítulo
         subtitle_label = QLabel("Baixe vídeos em MP4 ou extraia áudio em MP3")
         subtitle_font = QFont()
-        subtitle_font.setPointSize(12)
+        subtitle_font.setPointSize(15)
+        subtitle_font.setBold(True)
         subtitle_label.setFont(subtitle_font)
         subtitle_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        subtitle_label.setStyleSheet("color: #e8f0fe; background: transparent;")
+        subtitle_label.setStyleSheet("color: #ffffff; background: transparent;")
         header_layout.addWidget(subtitle_label)
         
         # Badge de plataformas suportadas
         platforms_label = QLabel("✨ YouTube • Streamyard • E mais")
         platforms_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        platforms_font = QFont()
+        platforms_font.setPointSize(12)
+        platforms_font.setBold(True)
+        platforms_label.setFont(platforms_font)
         platforms_label.setStyleSheet("""
-            color: white; 
-            background: rgba(255,255,255,0.2); 
-            padding: 6px 15px;
-            border-radius: 15px;
-            font-size: 9pt;
+            color: #ffffff; 
+            background: rgba(255,255,255,0.25); 
+            padding: 10px 20px;
+            border-radius: 20px;
         """)
-        platforms_label.setMaximumWidth(300)
+        platforms_label.setMaximumWidth(350)
         header_layout.addWidget(platforms_label, alignment=Qt.AlignmentFlag.AlignCenter)
         
         header_widget.setLayout(header_layout)
@@ -452,29 +490,32 @@ class YouTubeDownloaderGUI(QMainWindow):
         
         self.url_input = QLineEdit()
         self.url_input.setPlaceholderText("Cole aqui o link do vídeo...")
-        self.url_input.setMinimumHeight(45)
+        self.url_input.setMinimumHeight(50)
         self.url_input.textChanged.connect(self.on_url_changed)
         
         # Botão para analisar vídeo
         analyze_layout = QHBoxLayout()
         self.analyze_button = QPushButton("🔍 Analisar Vídeo")
-        self.analyze_button.setMinimumHeight(38)
+        self.analyze_button.setMinimumHeight(50)
+        analyze_font = QFont()
+        analyze_font.setPointSize(13)
+        analyze_font.setBold(True)
+        self.analyze_button.setFont(analyze_font)
         self.analyze_button.setStyleSheet("""
             QPushButton {
-                background-color: #1a73e8;
-                color: white;
+                background-color: #4a9eff;
+                color: #ffffff;
                 border: none;
-                border-radius: 6px;
+                border-radius: 8px;
                 font-weight: bold;
-                font-size: 10pt;
-                padding: 8px 20px;
+                padding: 10px 25px;
             }
             QPushButton:hover {
-                background-color: #1557b0;
+                background-color: #2979ff;
             }
             QPushButton:disabled {
-                background-color: #ccc;
-                color: #888;
+                background-color: #3d3d3d;
+                color: #666666;
             }
         """)
         self.analyze_button.clicked.connect(self.analyze_video)
@@ -491,21 +532,28 @@ class YouTubeDownloaderGUI(QMainWindow):
         self.video_info_widget = QWidget()
         self.video_info_widget.setStyleSheet("""
             QWidget {
-                background-color: #e8f0fe;
-                border: 2px solid #1a73e8;
-                border-radius: 8px;
-                padding: 12px;
+                background-color: #2d2d2d;
+                border: 3px solid #4a9eff;
+                border-radius: 10px;
+                padding: 15px;
             }
         """)
         self.video_info_widget.setVisible(False)
         video_info_layout = QVBoxLayout()
         
         self.video_title_label = QLabel()
-        self.video_title_label.setStyleSheet("font-weight: bold; color: #1a73e8; font-size: 11pt; background: transparent;")
+        title_font = QFont()
+        title_font.setPointSize(14)
+        title_font.setBold(True)
+        self.video_title_label.setFont(title_font)
+        self.video_title_label.setStyleSheet("font-weight: bold; color: #4a9eff; background: transparent;")
         self.video_title_label.setWordWrap(True)
         
         self.video_details_label = QLabel()
-        self.video_details_label.setStyleSheet("color: #5f6368; font-size: 9pt; background: transparent;")
+        details_font = QFont()
+        details_font.setPointSize(12)
+        self.video_details_label.setFont(details_font)
+        self.video_details_label.setStyleSheet("color: #cccccc; background: transparent;")
         
         video_info_layout.addWidget(self.video_title_label)
         video_info_layout.addWidget(self.video_details_label)
@@ -515,15 +563,18 @@ class YouTubeDownloaderGUI(QMainWindow):
         # Grupo: Nome do Arquivo
         filename_group = QGroupBox("📝 Nome do Arquivo")
         filename_layout = QVBoxLayout()
-        filename_layout.setSpacing(10)
+        filename_layout.setSpacing(12)
         
         filename_hint = QLabel("Personalize o nome do arquivo ou deixe vazio para usar o nome original")
-        filename_hint.setStyleSheet("color: #5f6368; font-size: 9pt; font-weight: normal;")
+        hint_font = QFont()
+        hint_font.setPointSize(12)
+        filename_hint.setFont(hint_font)
+        filename_hint.setStyleSheet("color: #aaaaaa; font-weight: normal;")
         filename_hint.setWordWrap(True)
         
         self.filename_input = QLineEdit()
         self.filename_input.setPlaceholderText("Nome do arquivo (sem extensão)")
-        self.filename_input.setMinimumHeight(45)
+        self.filename_input.setMinimumHeight(50)
         
         filename_layout.addWidget(filename_hint)
         filename_layout.addWidget(self.filename_input)
@@ -536,22 +587,25 @@ class YouTubeDownloaderGUI(QMainWindow):
         
         self.path_input = QLineEdit()
         self.path_input.setText(str(Path.home() / "Downloads"))
-        self.path_input.setMinimumHeight(45)
+        self.path_input.setMinimumHeight(50)
         
         browse_button = QPushButton("Procurar")
-        browse_button.setMinimumHeight(45)
-        browse_button.setMinimumWidth(120)
+        browse_button.setMinimumHeight(50)
+        browse_button.setMinimumWidth(140)
+        browse_font = QFont()
+        browse_font.setPointSize(13)
+        browse_font.setBold(True)
+        browse_button.setFont(browse_font)
         browse_button.setStyleSheet("""
             QPushButton {
-                background-color: #5f6368;
-                color: white;
+                background-color: #6c6c6c;
+                color: #ffffff;
                 border: none;
-                border-radius: 6px;
+                border-radius: 8px;
                 font-weight: bold;
-                font-size: 10pt;
             }
             QPushButton:hover {
-                background-color: #3c4043;
+                background-color: #8c8c8c;
             }
         """)
         browse_button.clicked.connect(self.browse_folder)
@@ -564,7 +618,7 @@ class YouTubeDownloaderGUI(QMainWindow):
         # Grupo: Tipo de Download
         type_group = QGroupBox("🎯 Formato de Download")
         type_layout = QVBoxLayout()
-        type_layout.setSpacing(12)
+        type_layout.setSpacing(15)
         
         self.button_group = QButtonGroup()
         
@@ -582,39 +636,45 @@ class YouTubeDownloaderGUI(QMainWindow):
         main_layout.addWidget(type_group)
         
         # Barra de progresso
-        progress_label = QLabel("Progresso do Download:")
-        progress_label.setStyleSheet("font-weight: bold; color: #3c4043; font-size: 10pt;")
+        progress_label = QLabel("⚡ Progresso do Download:")
+        progress_font = QFont()
+        progress_font.setPointSize(14)
+        progress_font.setBold(True)
+        progress_label.setFont(progress_font)
+        progress_label.setStyleSheet("font-weight: bold; color: #ffffff; margin-top: 10px;")
         main_layout.addWidget(progress_label)
         
         self.progress_bar = QProgressBar()
         self.progress_bar.setValue(0)
-        self.progress_bar.setMinimumHeight(30)
+        self.progress_bar.setMinimumHeight(38)
         self.progress_bar.setFormat("%p% - Pronto para iniciar")
         main_layout.addWidget(self.progress_bar)
         
         # Botão de Download (destaque)
         self.download_button = QPushButton("⬇️ Iniciar Download")
-        self.download_button.setMinimumHeight(55)
+        self.download_button.setMinimumHeight(65)
+        download_font = QFont()
+        download_font.setPointSize(16)
+        download_font.setBold(True)
+        self.download_button.setFont(download_font)
         self.download_button.setStyleSheet("""
             QPushButton {
-                background-color: #34a853;
-                color: white;
-                font-size: 14pt;
+                background-color: #00c853;
+                color: #ffffff;
                 font-weight: bold;
                 border: none;
-                border-radius: 8px;
-                padding: 10px;
+                border-radius: 10px;
+                padding: 12px;
             }
             QPushButton:hover {
-                background-color: #2d8e47;
-                transform: scale(1.02);
+                background-color: #00e676;
             }
             QPushButton:pressed {
-                background-color: #257c3d;
+                background-color: #00a844;
             }
             QPushButton:disabled {
-                background-color: #dadce0;
-                color: #9aa0a6;
+                background-color: #3d3d3d;
+                color: #666666;
             }
         """)
         self.download_button.clicked.connect(self.start_download)
@@ -622,29 +682,25 @@ class YouTubeDownloaderGUI(QMainWindow):
         
         # Log de status
         log_label = QLabel("📋 Log de Atividades:")
-        log_label.setStyleSheet("font-weight: bold; color: #3c4043; font-size: 10pt; margin-top: 10px;")
+        log_font = QFont()
+        log_font.setPointSize(14)
+        log_font.setBold(True)
+        log_label.setFont(log_font)
+        log_label.setStyleSheet("font-weight: bold; color: #ffffff; margin-top: 15px;")
         main_layout.addWidget(log_label)
         
         self.log_text = QTextEdit()
         self.log_text.setReadOnly(True)
-        self.log_text.setMaximumHeight(180)
-        self.log_text.setStyleSheet("""
-            QTextEdit {
-                background-color: #f8f9fa;
-                border: 2px solid #e1e8ed;
-                border-radius: 8px;
-                padding: 12px;
-                font-family: 'SF Mono', 'Menlo', 'Monaco', 'Courier New', monospace;
-                font-size: 9pt;
-                line-height: 1.5;
-            }
-        """)
+        self.log_text.setMaximumHeight(200)
         main_layout.addWidget(self.log_text)
         
         # Rodapé
         footer_label = QLabel("💻 Desenvolvido com PyQt6 e yt-dlp | Gustavo Nomelini © 2025")
         footer_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        footer_label.setStyleSheet("color: #9aa0a6; font-size: 9pt; margin-top: 15px;")
+        footer_font = QFont()
+        footer_font.setPointSize(11)
+        footer_label.setFont(footer_font)
+        footer_label.setStyleSheet("color: #888888; margin-top: 20px;")
         main_layout.addWidget(footer_label)
         
         central_widget.setLayout(main_layout)

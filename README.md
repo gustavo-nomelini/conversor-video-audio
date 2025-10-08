@@ -15,6 +15,7 @@ Uma aplicação desktop moderna com interface gráfica intuitiva para baixar ví
 ## �📋 Funcionalidades
 
 ### Interface e Usabilidade
+
 - ✅ Interface gráfica moderna e intuitiva
 - ✅ Design responsivo com scroll automático
 - ✅ Alto contraste para melhor acessibilidade
@@ -22,6 +23,7 @@ Uma aplicação desktop moderna com interface gráfica intuitiva para baixar ví
 - ✅ Log de atividades com timestamp
 
 ### Funcionalidades de Download
+
 - ✅ Download de vídeos em MP4 (melhor qualidade)
 - ✅ Extração de áudio em MP3 (alta qualidade)
 - ✅ **Análise prévia do vídeo** com informações detalhadas
@@ -31,6 +33,7 @@ Uma aplicação desktop moderna com interface gráfica intuitiva para baixar ví
 - ✅ Suporte para YouTube e Streamyard
 
 ### Informações do Vídeo
+
 - ✅ Título do vídeo
 - ✅ Nome do canal/autor
 - ✅ Duração do vídeo
@@ -171,6 +174,7 @@ python main.py
 A aplicação possui um design profissional e intuitivo:
 
 ### 🎨 Elementos Visuais
+
 - **Cabeçalho com gradiente azul** - Visual moderno e profissional
 - **Cards informativos** - Informações do vídeo em destaque
 - **Campos de entrada claros** - Placeholders e hints informativos
@@ -179,6 +183,7 @@ A aplicação possui um design profissional e intuitivo:
 - **Log com timestamp** - Acompanhe cada etapa do processo
 
 ### ♿ Acessibilidade
+
 - **Alto contraste** - Cores que seguem diretrizes WCAG
 - **Fontes legíveis** - Tamanhos apropriados e bem espaçadas
 - **Feedback visual claro** - Estados bem definidos em todos os elementos
