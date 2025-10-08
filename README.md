@@ -2,6 +2,34 @@
 
 Uma aplicação desktop moderna com interface gráfica intuitiva para baixar vídeos do YouTube e Streamyard em formato MP4 ou extrair apenas o áudio em MP3.
 
+## 🚀 Download Rápido
+
+### 💻 Para Usuários Windows (Sem Python!)
+
+**Baixe o executável pronto:**
+- 📦 [ConversorVideoAudio.exe](https://github.com/gustavo-nomelini/conversor-video-audio/releases) _(em breve)_
+- ✅ Não requer instalação do Python
+- ✅ Executável standalone único
+- ✅ Apenas duplo clique para usar
+- ⚠️ Requer FFmpeg instalado ([instruções aqui](README_WINDOWS.md))
+
+### 🐍 Para Desenvolvedores / Outras Plataformas
+
+Clone e execute com Python (veja instruções de instalação abaixo)
+
+## ✨ Novidades da Versão 2.0
+
+- 🎨 **Interface completamente redesenhada** - Design moderno e profissional com tema escuro
+- 📝 **Nome de arquivo personalizável** - Escolha como salvar seus downloads
+- 🔍 **Análise prévia do vídeo** - Veja informações antes de baixar
+- 💡 **Sugestão automática de nome** - Baseada no título do vídeo
+- ⚡ **Melhor acessibilidade** - Alto contraste otimizado para tema escuro macOS
+- 📊 **Informações do vídeo** - Título, autor e duração exibidos
+- 🎯 **Feedback visual aprimorado** - Estados claros em cada etapa
+- 🪟 **Executável Windows** - Versão standalone para Windows sem Pythonr de Vídeo/Áudio - MP4 & MP3
+
+Uma aplicação desktop moderna com interface gráfica intuitiva para baixar vídeos do YouTube e Streamyard em formato MP4 ou extrair apenas o áudio em MP3.
+
 ## ✨ Novidades da Versão 2.0
 
 - 🎨 **Interface completamente redesenhada** - Design moderno e profissional
