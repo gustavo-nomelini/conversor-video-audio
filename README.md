@@ -1,17 +1,40 @@
 # 🎬 Conversor de Vídeo/Áudio - MP4 & MP3
 
-Uma aplicação desktop com interface gráfica intuitiva para baixar vídeos do YouTube e Streamyard em formato MP4 ou extrair apenas o áudio em MP3.
+Uma aplicação desktop moderna com interface gráfica intuitiva para baixar vídeos do YouTube e Streamyard em formato MP4 ou extrair apenas o áudio em MP3.
 
-## 📋 Funcionalidades
+## ✨ Novidades da Versão 2.0
 
-- ✅ Interface gráfica amigável (sem necessidade de usar o terminal)
-- ✅ Download de vídeos em formato MP4 (melhor qualidade disponível)
-- ✅ Extração de áudio em formato MP3 (192kbps)
-- ✅ Barra de progresso em tempo real
-- ✅ Log de atividades detalhado
+- 🎨 **Interface completamente redesenhada** - Design moderno e profissional
+- � **Nome de arquivo personalizável** - Escolha como salvar seus downloads
+- 🔍 **Análise prévia do vídeo** - Veja informações antes de baixar
+- 💡 **Sugestão automática de nome** - Baseada no título do vídeo
+- ⚡ **Melhor acessibilidade** - Alto contraste e design responsivo
+- 📊 **Informações do vídeo** - Título, autor e duração exibidos
+- 🎯 **Feedback visual aprimorado** - Estados claros em cada etapa
+
+## �📋 Funcionalidades
+
+### Interface e Usabilidade
+- ✅ Interface gráfica moderna e intuitiva
+- ✅ Design responsivo com scroll automático
+- ✅ Alto contraste para melhor acessibilidade
+- ✅ Tema profissional com gradientes e animações
+- ✅ Log de atividades com timestamp
+
+### Funcionalidades de Download
+- ✅ Download de vídeos em MP4 (melhor qualidade)
+- ✅ Extração de áudio em MP3 (alta qualidade)
+- ✅ **Análise prévia do vídeo** com informações detalhadas
+- ✅ **Nome de arquivo personalizável** com sugestão automática
+- ✅ Barra de progresso em tempo real com velocidade e ETA
 - ✅ Seleção de pasta de destino
-- ✅ Suporte para vídeos do YouTube
-- ✅ Suporte para transmissões do Streamyard
+- ✅ Suporte para YouTube e Streamyard
+
+### Informações do Vídeo
+- ✅ Título do vídeo
+- ✅ Nome do canal/autor
+- ✅ Duração do vídeo
+- ✅ Limpeza automática de caracteres inválidos no nome
 
 ## 🌐 Plataformas Suportadas
 
@@ -123,25 +146,44 @@ python main.py
 
 ### Passos na interface:
 
-1. **Cole a URL do vídeo** (YouTube ou Streamyard) no campo de entrada
-2. **Selecione a pasta de destino** (padrão: Downloads)
-3. **Escolha o formato**:
-   - 🎥 **Vídeo MP4** - Baixa o vídeo completo
-   - 🎵 **Áudio MP3** - Extrai apenas o áudio
-4. **Clique em "Iniciar Download"**
-5. **Acompanhe o progresso** na barra e no log
+1. **Cole a URL do vídeo** no campo de entrada
+2. **Clique em "🔍 Analisar Vídeo"** para ver as informações
+   - Título do vídeo
+   - Nome do canal/autor
+   - Duração
+3. **Personalize o nome do arquivo** (opcional)
+   - O app sugere automaticamente um nome baseado no título
+   - Ou deixe vazio para usar o nome original
+4. **Selecione a pasta de destino** (padrão: Downloads)
+5. **Escolha o formato**:
+   - 🎥 **Vídeo MP4** - Baixa o vídeo completo em alta qualidade
+   - 🎵 **Áudio MP3** - Extrai apenas o áudio em alta qualidade
+6. **Clique em "⬇️ Iniciar Download"**
+7. **Acompanhe o progresso** em tempo real:
+   - Porcentagem completa
+   - Velocidade de download
+   - Tempo estimado (ETA)
 
 **Para Streamyard**: O app detecta automaticamente e extrai o link do stream - você só precisa colar o link da página!
 
-## 📸 Screenshots
+## 📸 Interface Moderna
 
-A interface possui:
+A aplicação possui um design profissional e intuitivo:
 
-- Campo para URL (YouTube ou Streamyard - extração automática)
-- Seletor de pasta de destino
-- Opções de formato (MP4 ou MP3)
-- Barra de progresso
-- Log de atividades em tempo real
+### 🎨 Elementos Visuais
+- **Cabeçalho com gradiente azul** - Visual moderno e profissional
+- **Cards informativos** - Informações do vídeo em destaque
+- **Campos de entrada claros** - Placeholders e hints informativos
+- **Botões com estados visuais** - Hover, focus e disabled bem definidos
+- **Barra de progresso animada** - Com gradiente e informações detalhadas
+- **Log com timestamp** - Acompanhe cada etapa do processo
+
+### ♿ Acessibilidade
+- **Alto contraste** - Cores que seguem diretrizes WCAG
+- **Fontes legíveis** - Tamanhos apropriados e bem espaçadas
+- **Feedback visual claro** - Estados bem definidos em todos os elementos
+- **Mensagens descritivas** - Erros e sucessos bem explicados
+- **Layout organizado** - Espaçamento adequado para facilitar leitura
 
 ## ✨ Funcionalidade Especial: Extração Automática do Streamyard
 
