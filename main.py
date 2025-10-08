@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
 """
-YouTube Downloader com Interface Gráfica
+Video/Audio Downloader com Interface Gráfica
+Suporte para YouTube e Streamyard (extração automática)
 Desenvolvido com PyQt6 e yt-dlp
 """
 
 import sys
 import os
+import re
+import requests
 from pathlib import Path
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
@@ -15,6 +18,112 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import QThread, pyqtSignal, Qt
 from PyQt6.QtGui import QFont, QIcon
 import yt_dlp
+
+
+def extract_streamyard_url(url):
+    """
+    Extrai automaticamente o link VOD.mp4 de uma página do Streamyard
+    usando Selenium para capturar requisições de rede
+    
+    Args:
+        url: URL da página do Streamyard (ex: https://streamyard.com/watch/...)
+    
+    Returns:
+        str: URL do vídeo VOD.mp4 ou None se não encontrado
+    """
+    try:
+        # Verifica se é uma URL do Streamyard
+        if 'streamyard.com' not in url.lower():
+            return None
+        
+        from selenium import webdriver
+        from selenium.webdriver.chrome.options import Options
+        from selenium.webdriver.chrome.service import Service
+        from selenium.webdriver.common.by import By
+        from selenium.webdriver.support.ui import WebDriverWait
+        from selenium.webdriver.support import expected_conditions as EC
+        from selenium.common.exceptions import TimeoutException
+        import time
+        
+        # Configurações do Chrome em modo headless
+        chrome_options = Options()
+        chrome_options.add_argument('--headless')
+        chrome_options.add_argument('--no-sandbox')
+        chrome_options.add_argument('--disable-dev-shm-usage')
+        chrome_options.add_argument('--disable-gpu')
+        chrome_options.add_argument('--window-size=1920,1080')
+        chrome_options.add_argument('user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36')
+        
+        # Habilita o log de performance para capturar requisições de rede
+        chrome_options.set_capability('goog:loggingPrefs', {'performance': 'ALL'})
+        
+        # Inicia o driver
+        driver = webdriver.Chrome(options=chrome_options)
+        
+        try:
+            # Acessa a página
+            driver.get(url)
+            
+            # Aguarda a página carregar
+            time.sleep(5)
+            
+            # Tenta clicar no botão de play se existir
+            try:
+                play_button = WebDriverWait(driver, 10).until(
+                    EC.element_to_be_clickable((By.CSS_SELECTOR, 'button[aria-label*="play"], button[class*="play"], .play-button, button svg'))
+                )
+                play_button.click()
+                time.sleep(3)  # Aguarda o vídeo começar a carregar
+            except TimeoutException:
+                # Se não encontrar botão de play, continua mesmo assim
+                pass
+            
+            # Captura os logs de rede
+            logs = driver.get_log('performance')
+            
+            vod_urls = []
+            for log in logs:
+                try:
+                    import json
+                    message = json.loads(log['message'])['message']
+                    
+                    # Procura por requisições de rede
+                    if message['method'] == 'Network.responseReceived' or message['method'] == 'Network.requestWillBeSent':
+                        if 'params' in message and 'request' in message['params']:
+                            request_url = message['params']['request']['url']
+                        elif 'params' in message and 'response' in message['params']:
+                            request_url = message['params']['response']['url']
+                        else:
+                            continue
+                        
+                        # Procura por URLs que contenham VOD.mp4 ou .mp4 de CDNs conhecidas
+                        if any(pattern in request_url.lower() for pattern in ['vod.mp4', 'vod-', '.mp4', 'cloudfront.net', 'akamai', 'cdn']):
+                            if request_url.endswith('.mp4') or 'vod' in request_url.lower():
+                                vod_urls.append(request_url)
+                
+                except Exception as e:
+                    continue
+            
+            driver.quit()
+            
+            # Retorna o primeiro URL VOD.mp4 encontrado
+            if vod_urls:
+                # Prioriza URLs que contenham "vod" no nome
+                vod_priority = [u for u in vod_urls if 'vod' in u.lower()]
+                return vod_priority[0] if vod_priority else vod_urls[0]
+            
+            return None
+            
+        finally:
+            if driver:
+                driver.quit()
+        
+    except ImportError:
+        print("Selenium não está instalado. Instale com: pip install selenium")
+        return None
+    except Exception as e:
+        print(f"Erro ao extrair URL do Streamyard: {e}")
+        return None
 
 
 class DownloadThread(QThread):
@@ -62,6 +171,26 @@ class DownloadThread(QThread):
     def run(self):
         """Executa o download"""
         try:
+            # Verifica se é um link do Streamyard e extrai o .m3u8 automaticamente
+            url_to_download = self.url
+            
+            if 'streamyard.com' in self.url.lower() and '.m3u8' not in self.url.lower():
+                self.progress.emit("🔍 Detectado link do Streamyard! Extraindo URL do stream...")
+                extracted_url = extract_streamyard_url(self.url)
+                
+                if extracted_url:
+                    url_to_download = extracted_url
+                    self.progress.emit(f"✅ URL do stream extraída com sucesso!")
+                    self.progress.emit(f"📡 Stream: {extracted_url[:60]}...")
+                else:
+                    self.finished.emit(False, 
+                        "❌ Não foi possível extrair o link do stream do Streamyard.\n\n"
+                        "Tente:\n"
+                        "1. Verificar se o vídeo está disponível\n"
+                        "2. Copiar manualmente o link .m3u8 usando F12 → Rede"
+                    )
+                    return
+            
             # Configurações base do yt-dlp
             ydl_opts = {
                 'progress_hooks': [self.progress_hook],
@@ -109,7 +238,7 @@ class DownloadThread(QThread):
             
             # Executa o download
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                info = ydl.extract_info(self.url, download=True)
+                info = ydl.extract_info(url_to_download, download=True)
                 filename = ydl.prepare_filename(info)
                 
                 # Para MP3, o nome do arquivo muda após a conversão
@@ -132,7 +261,7 @@ class YouTubeDownloaderGUI(QMainWindow):
         
     def init_ui(self):
         """Inicializa a interface do usuário"""
-        self.setWindowTitle("YouTube Downloader - MP4 & MP3")
+        self.setWindowTitle("Conversor de Vídeo/Áudio - MP4 & MP3")
         self.setMinimumSize(700, 600)
         
         # Widget central
@@ -145,7 +274,7 @@ class YouTubeDownloaderGUI(QMainWindow):
         main_layout.setContentsMargins(20, 20, 20, 20)
         
         # Título
-        title_label = QLabel("🎬 YouTube Downloader")
+        title_label = QLabel("🎬 Conversor de Vídeo/Áudio")
         title_font = QFont()
         title_font.setPointSize(18)
         title_font.setBold(True)
@@ -154,7 +283,7 @@ class YouTubeDownloaderGUI(QMainWindow):
         main_layout.addWidget(title_label)
         
         # Subtítulo
-        subtitle_label = QLabel("Baixe vídeos em MP4 ou extraia áudio em MP3")
+        subtitle_label = QLabel("Baixe vídeos em MP4 ou extraia áudio em MP3 (YouTube e Streamyard)")
         subtitle_font = QFont()
         subtitle_font.setPointSize(10)
         subtitle_label.setFont(subtitle_font)
@@ -165,15 +294,22 @@ class YouTubeDownloaderGUI(QMainWindow):
         main_layout.addSpacing(10)
         
         # Grupo: URL do Vídeo
-        url_group = QGroupBox("URL do YouTube")
+        url_group = QGroupBox("URL do Vídeo")
         url_layout = QVBoxLayout()
         
-        url_label = QLabel("Cole o link do vídeo do YouTube:")
+        url_label = QLabel("Cole o link do vídeo:")
+        
+        # Adiciona instrução informativa
+        info_label = QLabel("✨ Suporta YouTube e Streamyard (extração automática do stream)")
+        info_label.setStyleSheet("color: #0066cc; font-size: 9pt; margin-bottom: 5px;")
+        info_label.setWordWrap(True)
+        
         self.url_input = QLineEdit()
-        self.url_input.setPlaceholderText("https://www.youtube.com/watch?v=...")
+        self.url_input.setPlaceholderText("https://www.youtube.com/watch?v=... ou https://streamyard.com/watch/...")
         self.url_input.setMinimumHeight(35)
         
         url_layout.addWidget(url_label)
+        url_layout.addWidget(info_label)
         url_layout.addWidget(self.url_input)
         url_group.setLayout(url_layout)
         main_layout.addWidget(url_group)
