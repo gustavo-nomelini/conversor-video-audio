@@ -202,8 +202,6 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"\n[ERRO INESPERADO] {e}")
         sys.exit(1)
-            shutil.rmtree(folder)
-            print(f"   Removido: {folder}/")
     
     # Remove arquivos .spec antigos
     spec_file = f"{app_name}.spec"

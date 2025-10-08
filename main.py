@@ -21,6 +21,67 @@ from PyQt6.QtGui import QFont, QIcon, QPalette, QColor
 import yt_dlp
 
 
+def clean_and_validate_url(url):
+    """
+    Limpa e valida uma URL, corrigindo problemas comuns
+    
+    Args:
+        url: URL a ser limpa
+        
+    Returns:
+        str: URL limpa e válida ou None se inválida
+    """
+    if not url:
+        return None
+    
+    # Remove espaços e caracteres de controle
+    url = url.strip()
+    
+    # Remove quebras de linha e tabs
+    url = url.replace('\n', '').replace('\r', '').replace('\t', '')
+    
+    # Corrige problema comum de URLs duplicadas
+    # Ex: "https://www.youtube.cohttps://www.youtube.com/..."
+    if 'https://www.youtube.cohttps://' in url:
+        # Extrai a URL correta
+        start_pos = url.find('https://www.youtube.com/')
+        if start_pos > 0:  # Se há uma segunda ocorrência
+            url = url[start_pos:]
+    
+    # Corrige outros problemas similares
+    patterns_to_fix = [
+        ('http://www.youtube.cohttp://', 'http://'),
+        ('https://youtu.behttps://', 'https://'),
+        ('http://youtu.behttp://', 'http://'),
+    ]
+    
+    for pattern, replacement in patterns_to_fix:
+        if pattern in url:
+            start_pos = url.find(replacement, len(pattern) - len(replacement))
+            if start_pos > 0:
+                url = url[start_pos:]
+    
+    # Validação básica de formato de URL
+    if not (url.startswith('http://') or url.startswith('https://')):
+        return None
+    
+    # Validação específica para plataformas suportadas
+    supported_domains = [
+        'youtube.com', 'youtu.be', 'm.youtube.com',
+        'streamyard.com', 'vimeo.com', 'dailymotion.com',
+        'twitch.tv', 'facebook.com', 'instagram.com'
+    ]
+    
+    url_lower = url.lower()
+    is_supported = any(domain in url_lower for domain in supported_domains)
+    
+    if not is_supported:
+        # Permite outras URLs, mas avisa
+        print(f"Aviso: Domínio pode não ser suportado: {url}")
+    
+    return url
+
+
 def extract_streamyard_url(url):
     """
     Extrai automaticamente o link VOD.mp4 de uma página do Streamyard
@@ -154,6 +215,23 @@ class VideoInfoThread(QThread):
                 'quiet': True,
                 'no_warnings': True,
                 'skip_download': True,
+                'socket_timeout': 15,
+                'retries': 2,
+                # Configurações para evitar bloqueio
+                'extractor_args': {
+                    'youtube': {
+                        'player_client': ['android', 'ios'],
+                        'skip': ['hls'],
+                    }
+                },
+                'http_headers': {
+                    'User-Agent': 'Mozilla/5.0 (Linux; Android 11; SM-G973F) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.120 Mobile Safari/537.36',
+                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                    'Accept-Language': 'pt-BR,pt;q=0.9,en;q=0.8',
+                    'DNT': '1',
+                    'Connection': 'keep-alive',
+                },
+                'nocheckcertificate': True,
             }
             
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -165,7 +243,21 @@ class VideoInfoThread(QThread):
                 }
                 self.info_received.emit(video_info)
         except Exception as e:
-            self.error_occurred.emit(str(e))
+            error_str = str(e).lower()
+            
+            # Tratamento específico para erros comuns na análise
+            if any(phrase in error_str for phrase in ['sign in to confirm', 'not a bot', 'captcha']):
+                error_message = "YouTube detectou atividade automatizada. Aguarde alguns minutos e tente novamente."
+            elif any(phrase in error_str for phrase in ['private video', 'unavailable', 'removed']):
+                error_message = "Vídeo não disponível (privado, removido ou com restrições)."
+            elif any(phrase in error_str for phrase in ['network', 'connection', 'timeout', 'resolve']):
+                error_message = "Problema de conexão. Verifique sua internet e tente novamente."
+            elif 'http error 403' in error_str:
+                error_message = "Acesso negado. O vídeo pode ter restrições regionais."
+            else:
+                error_message = f"Erro ao analisar: {str(e)}"
+            
+            self.error_occurred.emit(error_message)
 
 
 class DownloadThread(QThread):
@@ -240,25 +332,38 @@ class DownloadThread(QThread):
                     )
                     return
             
-            # Configurações base do yt-dlp
+            # Configurações base do yt-dlp com melhor compatibilidade
             ydl_opts = {
                 'progress_hooks': [self.progress_hook],
                 'quiet': True,
                 'no_warnings': True,
                 'noplaylist': True,  # --no-playlist
+                'socket_timeout': 30,
+                'retries': 3,
+                'fragment_retries': 5,
                 # Configurações para evitar bloqueio de bot e erro 403
                 'extractor_args': {
                     'youtube': {
-                        'player_client': ['android', 'ios', 'web'],
-                        'skip': ['hls', 'dash'],
+                        'player_client': ['android', 'ios'],  # Usa clientes móveis mais confiáveis
+                        'skip': ['hls'],  # Pula HLS quando possível
                     }
                 },
                 'http_headers': {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-                    'Accept-Language': 'en-us,en;q=0.5',
+                    'User-Agent': 'Mozilla/5.0 (Linux; Android 11; SM-G973F) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.120 Mobile Safari/537.36',
+                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+                    'Accept-Language': 'pt-BR,pt;q=0.9,en;q=0.8',
+                    'Accept-Encoding': 'gzip, deflate, br',
+                    'DNT': '1',
+                    'Connection': 'keep-alive',
+                    'Upgrade-Insecure-Requests': '1',
+                    'Sec-Fetch-Dest': 'document',
                     'Sec-Fetch-Mode': 'navigate',
+                    'Sec-Fetch-Site': 'none',
+                    'Cache-Control': 'max-age=0',
                 },
+                # Configurações de cookies para contornar detecção
+                'cookiefile': None,
+                'nocheckcertificate': True,
             }
             
             # Configurações específicas por tipo de download
@@ -337,8 +442,70 @@ class DownloadThread(QThread):
                 
         except Exception as e:
             import traceback
-            error_details = traceback.format_exc()
-            self.finished.emit(False, f"❌ Erro durante o download:\n\n{str(e)}\n\nDetalhes técnicos:\n{error_details}")
+            error_str = str(e).lower()
+            
+            # Tratamento específico para erros comuns
+            if any(phrase in error_str for phrase in ['sign in to confirm', 'not a bot', 'captcha']):
+                error_message = (
+                    "❌ YouTube detectou atividade automatizada\n\n"
+                    "💡 Soluções recomendadas:\n"
+                    "1. Aguarde alguns minutos e tente novamente\n"
+                    "2. Use uma conexão VPN diferente\n"
+                    "3. Tente acessar o vídeo no navegador primeiro\n"
+                    "4. Se persistir, o vídeo pode ter restrições regionais\n\n"
+                    f"Erro técnico: {str(e)}"
+                )
+            elif any(phrase in error_str for phrase in ['private video', 'unavailable', 'removed']):
+                error_message = (
+                    "❌ Vídeo não disponível\n\n"
+                    "Possíveis causas:\n"
+                    "• Vídeo foi removido ou tornado privado\n"
+                    "• Restrições regionais ou de idade\n"
+                    "• Link expirado ou inválido\n\n"
+                    f"Erro técnico: {str(e)}"
+                )
+            elif any(phrase in error_str for phrase in ['network', 'connection', 'timeout', 'resolve']):
+                error_message = (
+                    "❌ Problema de conexão\n\n"
+                    "💡 Soluções:\n"
+                    "1. Verifique sua conexão com a internet\n"
+                    "2. Tente novamente em alguns instantes\n"
+                    "3. Verifique se não há bloqueio de firewall\n"
+                    "4. Se usar VPN, tente desconectar temporariamente\n\n"
+                    f"Erro técnico: {str(e)}"
+                )
+            elif 'http error 403' in error_str or 'forbidden' in error_str:
+                error_message = (
+                    "❌ Acesso negado (Erro 403)\n\n"
+                    "💡 Soluções:\n"
+                    "1. Aguarde alguns minutos e tente novamente\n"
+                    "2. O vídeo pode ter restrições geográficas\n"
+                    "3. Tente usar uma VPN de outro país\n"
+                    "4. Verifique se o vídeo ainda está disponível\n\n"
+                    f"Erro técnico: {str(e)}"
+                )
+            elif 'http error 429' in error_str or 'too many requests' in error_str:
+                error_message = (
+                    "❌ Muitas requisições (Erro 429)\n\n"
+                    "💡 Solução:\n"
+                    "• Aguarde 15-30 minutos antes de tentar novamente\n"
+                    "• O servidor está limitando o número de downloads\n\n"
+                    f"Erro técnico: {str(e)}"
+                )
+            else:
+                # Erro genérico com mais detalhes
+                error_details = traceback.format_exc()
+                error_message = (
+                    f"❌ Erro durante o download:\n\n{str(e)}\n\n"
+                    "💡 Sugestões gerais:\n"
+                    "1. Verifique se a URL está correta\n"
+                    "2. Tente novamente em alguns minutos\n"
+                    "3. Verifique sua conexão com a internet\n"
+                    "4. Se persistir, o vídeo pode ter restrições\n\n"
+                    f"Detalhes técnicos:\n{error_details}"
+                )
+            
+            self.finished.emit(False, error_message)
 
 
 class YouTubeDownloaderGUI(QMainWindow):
@@ -539,12 +706,14 @@ class YouTubeDownloaderGUI(QMainWindow):
         self.url_input.setMinimumHeight(50)
         self.url_input.textChanged.connect(self.on_url_changed)
         
-        # Botão para analisar vídeo
+        # Botões para analisar vídeo e download direto
         analyze_layout = QHBoxLayout()
-        self.analyze_button = QPushButton("🔍 Analisar Vídeo")
+        
+        # Botão de análise (opcional)
+        self.analyze_button = QPushButton("🔍 Analisar Vídeo (Opcional)")
         self.analyze_button.setMinimumHeight(50)
         analyze_font = QFont()
-        analyze_font.setPointSize(13)
+        analyze_font.setPointSize(12)
         analyze_font.setBold(True)
         self.analyze_button.setFont(analyze_font)
         self.analyze_button.setStyleSheet("""
@@ -554,7 +723,7 @@ class YouTubeDownloaderGUI(QMainWindow):
                 border: none;
                 border-radius: 8px;
                 font-weight: bold;
-                padding: 10px 25px;
+                padding: 10px 20px;
             }
             QPushButton:hover {
                 background-color: #2979ff;
@@ -566,8 +735,38 @@ class YouTubeDownloaderGUI(QMainWindow):
         """)
         self.analyze_button.clicked.connect(self.analyze_video)
         self.analyze_button.setEnabled(False)
+        
+        # Botão de download direto
+        self.direct_download_button = QPushButton("⚡ Download Direto")
+        self.direct_download_button.setMinimumHeight(50)
+        direct_font = QFont()
+        direct_font.setPointSize(12)
+        direct_font.setBold(True)
+        self.direct_download_button.setFont(direct_font)
+        self.direct_download_button.setStyleSheet("""
+            QPushButton {
+                background-color: #ff6b35;
+                color: #ffffff;
+                border: none;
+                border-radius: 8px;
+                font-weight: bold;
+                padding: 10px 20px;
+            }
+            QPushButton:hover {
+                background-color: #e85a2b;
+            }
+            QPushButton:disabled {
+                background-color: #3d3d3d;
+                color: #666666;
+            }
+        """)
+        self.direct_download_button.clicked.connect(self.start_direct_download)
+        self.direct_download_button.setEnabled(False)
+        
         analyze_layout.addStretch()
         analyze_layout.addWidget(self.analyze_button)
+        analyze_layout.addSpacing(10)
+        analyze_layout.addWidget(self.direct_download_button)
         
         url_layout.addWidget(self.url_input)
         url_layout.addLayout(analyze_layout)
@@ -753,20 +952,44 @@ class YouTubeDownloaderGUI(QMainWindow):
         
         # Log inicial
         self.add_log("✅ Aplicação iniciada e pronta para uso!")
-        self.add_log("ℹ️ Cole uma URL e clique em 'Analisar Vídeo' para começar")
+        self.add_log("ℹ️ Cole uma URL e clique em:")
+        self.add_log("   📹 'Analisar Vídeo' para ver detalhes (opcional)")
+        self.add_log("   ⚡ 'Download Direto' para baixar sem análise")
     
     def on_url_changed(self, text):
-        """Habilita/desabilita botão de análise baseado na URL"""
-        self.analyze_button.setEnabled(bool(text.strip()))
+        """Habilita/desabilita botões baseado na URL"""
+        has_url = bool(text.strip())
+        self.analyze_button.setEnabled(has_url)
+        self.direct_download_button.setEnabled(has_url)
         self.video_info_widget.setVisible(False)
         self.filename_input.clear()
     
     def analyze_video(self):
         """Analisa o vídeo e obtém informações"""
-        url = self.url_input.text().strip()
+        url_raw = self.url_input.text().strip()
+        
+        if not url_raw:
+            return
+        
+        # Limpa e valida a URL
+        url = clean_and_validate_url(url_raw)
         
         if not url:
+            QMessageBox.warning(
+                self,
+                "URL Inválida",
+                "A URL fornecida não é válida ou não é suportada.\n\n"
+                "Certifique-se de que:\n"
+                "• A URL começa com http:// ou https://\n"
+                "• A URL está completa e correta\n"
+                "• Não há caracteres extras ou espaços"
+            )
             return
+        
+        # Atualiza o campo com a URL limpa
+        if url != url_raw:
+            self.url_input.setText(url)
+            self.add_log(f"🔧 URL corrigida automaticamente")
         
         self.analyze_button.setEnabled(False)
         self.analyze_button.setText("🔄 Analisando...")
@@ -781,7 +1004,7 @@ class YouTubeDownloaderGUI(QMainWindow):
     def on_video_info_received(self, info):
         """Callback quando informações do vídeo são recebidas"""
         self.analyze_button.setEnabled(True)
-        self.analyze_button.setText("🔍 Analisar Vídeo")
+        self.analyze_button.setText("🔍 Analisar Vídeo (Opcional)")
         
         # Limpa e formata o título para usar como nome de arquivo
         title = info['title']
@@ -821,13 +1044,15 @@ class YouTubeDownloaderGUI(QMainWindow):
     def on_video_info_error(self, error):
         """Callback quando ocorre erro ao buscar informações"""
         self.analyze_button.setEnabled(True)
-        self.analyze_button.setText("🔍 Analisar Vídeo")
+        self.analyze_button.setText("🔍 Analisar Vídeo (Opcional)")
         
         self.add_log(f"⚠️ Não foi possível analisar o vídeo: {error}")
+        self.add_log("💡 Use 'Download Direto' para baixar sem análise")
         QMessageBox.warning(
             self,
             "Aviso",
-            "Não foi possível analisar o vídeo.\nVocê ainda pode tentar fazer o download."
+            "Não foi possível analisar o vídeo.\n\n"
+            "💡 Use o botão 'Download Direto' para baixar sem análise."
         )
         
     def browse_folder(self):
@@ -850,14 +1075,14 @@ class YouTubeDownloaderGUI(QMainWindow):
         scrollbar = self.log_text.verticalScrollBar()
         scrollbar.setValue(scrollbar.maximum())
     
-    def start_download(self):
-        """Inicia o processo de download"""
-        url = self.url_input.text().strip()
+    def start_direct_download(self):
+        """Inicia download direto sem análise prévia"""
+        url_raw = self.url_input.text().strip()
         output_path = self.path_input.text().strip()
         custom_filename = self.filename_input.text().strip()
         
-        # Validações
-        if not url:
+        # Validações básicas
+        if not url_raw:
             QMessageBox.warning(
                 self,
                 "Campo Obrigatório",
@@ -865,6 +1090,126 @@ class YouTubeDownloaderGUI(QMainWindow):
             )
             self.url_input.setFocus()
             return
+        
+        # Limpa e valida a URL
+        url = clean_and_validate_url(url_raw)
+        
+        if not url:
+            QMessageBox.warning(
+                self,
+                "URL Inválida",
+                "A URL fornecida não é válida ou não é suportada.\n\n"
+                "Certifique-se de que:\n"
+                "• A URL começa com http:// ou https://\n"
+                "• A URL está completa e correta\n"
+                "• Não há caracteres extras ou espaços"
+            )
+            self.url_input.setFocus()
+            return
+        
+        # Atualiza o campo com a URL limpa se necessário
+        if url != url_raw:
+            self.url_input.setText(url)
+            self.add_log(f"🔧 URL corrigida automaticamente")
+        
+        if not output_path or not os.path.exists(output_path):
+            QMessageBox.warning(
+                self,
+                "Pasta Inválida",
+                "Por favor, selecione uma pasta de destino válida!"
+            )
+            return
+        
+        # Determina o tipo de download
+        download_type = 'mp4' if self.radio_mp4.isChecked() else 'mp3'
+        
+        # Se não há nome customizado, usa um nome baseado na URL
+        if not custom_filename:
+            from urllib.parse import urlparse, parse_qs
+            parsed = urlparse(url)
+            
+            # Tenta extrair ID do YouTube
+            if 'youtube.com' in url or 'youtu.be' in url:
+                if 'youtu.be' in url:
+                    video_id = parsed.path.lstrip('/')
+                else:
+                    video_id = parse_qs(parsed.query).get('v', [''])[0]
+                
+                if video_id:
+                    custom_filename = f"video_{video_id}"
+                else:
+                    from datetime import datetime
+                    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                    custom_filename = f"video_{timestamp}"
+            else:
+                from datetime import datetime
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                custom_filename = f"download_{timestamp}"
+            
+            # Atualiza o campo de nome
+            self.filename_input.setText(custom_filename)
+            self.add_log(f"📝 Nome do arquivo: {custom_filename}.{download_type}")
+        
+        # Desabilita controles durante o download
+        self.download_button.setEnabled(False)
+        self.direct_download_button.setEnabled(False)
+        self.download_button.setText("⏳ Baixando...")
+        self.url_input.setEnabled(False)
+        self.filename_input.setEnabled(False)
+        self.analyze_button.setEnabled(False)
+        self.progress_bar.setValue(0)
+        self.progress_bar.setFormat("%p% - Iniciando...")
+        
+        # Log
+        self.add_log("=" * 60)
+        self.add_log(f"⚡ Download Direto: {download_type.upper()}")
+        self.add_log(f"🔗 URL: {url[:70]}{'...' if len(url) > 70 else ''}")
+        self.add_log(f"📝 Nome: {custom_filename}.{download_type}")
+        self.add_log("ℹ️ Pulando análise - iniciando download direto...")
+        
+        # Cria e inicia a thread de download
+        self.download_thread = DownloadThread(url, output_path, download_type, custom_filename)
+        self.download_thread.progress.connect(self.add_log)
+        self.download_thread.download_progress.connect(self.update_progress)
+        self.download_thread.finished.connect(self.download_finished)
+        self.download_thread.start()
+    
+    def start_download(self):
+        """Inicia o processo de download"""
+        url_raw = self.url_input.text().strip()
+        output_path = self.path_input.text().strip()
+        custom_filename = self.filename_input.text().strip()
+        
+        # Validações
+        if not url_raw:
+            QMessageBox.warning(
+                self,
+                "Campo Obrigatório",
+                "Por favor, insira a URL do vídeo!"
+            )
+            self.url_input.setFocus()
+            return
+        
+        # Limpa e valida a URL
+        url = clean_and_validate_url(url_raw)
+        
+        if not url:
+            QMessageBox.warning(
+                self,
+                "URL Inválida",
+                "A URL fornecida não é válida ou não é suportada.\n\n"
+                "Certifique-se de que:\n"
+                "• A URL começa com http:// ou https://\n"
+                "• A URL está completa e correta\n"
+                "• Não há caracteres extras ou espaços"
+            )
+            self.url_input.setFocus()
+            return
+        
+        # Atualiza o campo com a URL limpa se necessário
+        if url != url_raw:
+            self.url_input.setText(url)
+            self.add_log(f"🔧 URL corrigida automaticamente")
         
         if not output_path or not os.path.exists(output_path):
             QMessageBox.warning(
@@ -912,6 +1257,7 @@ class YouTubeDownloaderGUI(QMainWindow):
         """Callback quando o download termina"""
         # Reabilita controles
         self.download_button.setEnabled(True)
+        self.direct_download_button.setEnabled(True)
         self.download_button.setText("⬇️ Iniciar Download")
         self.url_input.setEnabled(True)
         self.filename_input.setEnabled(True)
