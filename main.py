@@ -139,6 +139,17 @@ class VideoInfoThread(QThread):
     def run(self):
         """Busca informações do vídeo"""
         try:
+            # Se for Streamyard, retorna info genérica (não suporta análise prévia)
+            if 'streamyard.com' in self.url.lower():
+                video_info = {
+                    'title': 'Vídeo do Streamyard',
+                    'duration': 0,
+                    'uploader': 'Streamyard',
+                }
+                self.info_received.emit(video_info)
+                return
+            
+            # Para YouTube e outras plataformas
             ydl_opts = {
                 'quiet': True,
                 'no_warnings': True,
@@ -203,23 +214,29 @@ class DownloadThread(QThread):
     def run(self):
         """Executa o download"""
         try:
-            # Verifica se é um link do Streamyard e extrai o .m3u8 automaticamente
+            # Verifica se é um link do Streamyard e extrai o .mp4 automaticamente
             url_to_download = self.url
+            is_streamyard = 'streamyard.com' in self.url.lower()
             
-            if 'streamyard.com' in self.url.lower() and '.m3u8' not in self.url.lower():
-                self.progress.emit("🔍 Detectado link do Streamyard! Extraindo URL do stream...")
+            if is_streamyard and '.mp4' not in self.url.lower():
+                self.progress.emit("🔍 Detectado link do Streamyard! Extraindo URL do vídeo...")
                 extracted_url = extract_streamyard_url(self.url)
                 
                 if extracted_url:
                     url_to_download = extracted_url
-                    self.progress.emit(f"✅ URL do stream extraída com sucesso!")
-                    self.progress.emit(f"📡 Stream: {extracted_url[:60]}...")
+                    self.progress.emit(f"✅ URL do vídeo extraída com sucesso!")
+                    self.progress.emit(f"📡 Vídeo: {extracted_url[:80]}...")
                 else:
                     self.finished.emit(False, 
-                        "❌ Não foi possível extrair o link do stream do Streamyard.\n\n"
+                        "❌ Não foi possível extrair o link do vídeo do Streamyard.\n\n"
+                        "Possíveis causas:\n"
+                        "1. O vídeo não está mais disponível\n"
+                        "2. Problemas de conexão\n"
+                        "3. Streamyard mudou a estrutura da página\n\n"
                         "Tente:\n"
-                        "1. Verificar se o vídeo está disponível\n"
-                        "2. Copiar manualmente o link .m3u8 usando F12 → Rede"
+                        "• Verificar se o vídeo está disponível no navegador\n"
+                        "• Tentar novamente em alguns instantes\n"
+                        "• Copiar manualmente o link .mp4 usando F12 → Rede"
                     )
                     return
             
@@ -249,6 +266,11 @@ class DownloadThread(QThread):
                 # Define o nome do arquivo
                 if self.custom_filename:
                     output_template = os.path.join(self.output_path, f"{self.custom_filename}.%(ext)s")
+                elif is_streamyard:
+                    # Para Streamyard, usa um nome genérico se não tiver custom
+                    from datetime import datetime
+                    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                    output_template = os.path.join(self.output_path, f"streamyard_{timestamp}.%(ext)s")
                 else:
                     output_template = os.path.join(self.output_path, '%(title)s.%(ext)s')
                 
@@ -264,6 +286,11 @@ class DownloadThread(QThread):
                 # Define o nome do arquivo
                 if self.custom_filename:
                     output_template = os.path.join(self.output_path, f"{self.custom_filename}.%(ext)s")
+                elif is_streamyard:
+                    # Para Streamyard, usa um nome genérico se não tiver custom
+                    from datetime import datetime
+                    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                    output_template = os.path.join(self.output_path, f"streamyard_audio_{timestamp}.%(ext)s")
                 else:
                     output_template = os.path.join(self.output_path, '%(title)s.%(ext)s')
                 
@@ -283,16 +310,35 @@ class DownloadThread(QThread):
             # Executa o download
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(url_to_download, download=True)
-                filename = ydl.prepare_filename(info)
                 
-                # Para MP3, o nome do arquivo muda após a conversão
-                if self.download_type == 'mp3':
-                    filename = os.path.splitext(filename)[0] + '.mp3'
+                # Determina o nome do arquivo final
+                if self.custom_filename:
+                    # Se há nome customizado
+                    if self.download_type == 'mp3':
+                        filename = os.path.join(self.output_path, f"{self.custom_filename}.mp3")
+                    else:
+                        filename = os.path.join(self.output_path, f"{self.custom_filename}.mp4")
+                elif is_streamyard:
+                    # Se é Streamyard sem nome customizado
+                    from datetime import datetime
+                    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                    if self.download_type == 'mp3':
+                        filename = os.path.join(self.output_path, f"streamyard_audio_{timestamp}.mp3")
+                    else:
+                        filename = os.path.join(self.output_path, f"streamyard_{timestamp}.mp4")
+                else:
+                    # Usa o nome que o yt-dlp gerou
+                    filename = ydl.prepare_filename(info)
+                    # Para MP3, o nome do arquivo muda após a conversão
+                    if self.download_type == 'mp3':
+                        filename = os.path.splitext(filename)[0] + '.mp3'
                 
-                self.finished.emit(True, f"Download concluído!\nArquivo salvo em:\n{filename}")
+                self.finished.emit(True, f"✅ Download concluído!\n\n📁 Arquivo salvo em:\n{filename}")
                 
         except Exception as e:
-            self.finished.emit(False, f"Erro durante o download:\n{str(e)}")
+            import traceback
+            error_details = traceback.format_exc()
+            self.finished.emit(False, f"❌ Erro durante o download:\n\n{str(e)}\n\nDetalhes técnicos:\n{error_details}")
 
 
 class YouTubeDownloaderGUI(QMainWindow):
@@ -749,19 +795,28 @@ class YouTubeDownloaderGUI(QMainWindow):
         self.video_title_label.setText(f"📹 {title}")
         
         duration = info.get('duration', 0)
-        duration_str = f"{duration // 60}:{duration % 60:02d}" if duration > 0 else "Desconhecido"
         uploader = info.get('uploader', 'Desconhecido')
         
-        self.video_details_label.setText(f"👤 {uploader} | ⏱️ Duração: {duration_str}")
-        
-        # Sugere o nome do arquivo
-        self.filename_input.setText(clean_title)
-        self.filename_input.selectAll()
+        # Se for Streamyard, mostra informação especial
+        if uploader == 'Streamyard':
+            duration_str = "Será detectado automaticamente"
+            self.video_details_label.setText(f"👤 {uploader} | ⚡ A URL do vídeo será extraída automaticamente")
+            self.add_log(f"✅ Link do Streamyard detectado")
+            self.add_log(f"ℹ️ O vídeo será extraído automaticamente ao iniciar o download")
+            # Sugere um nome genérico
+            from datetime import datetime
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            self.filename_input.setPlaceholderText(f"streamyard_{timestamp}")
+        else:
+            duration_str = f"{duration // 60}:{duration % 60:02d}" if duration > 0 else "Desconhecido"
+            self.video_details_label.setText(f"👤 {uploader} | ⏱️ Duração: {duration_str}")
+            # Sugere o nome do arquivo
+            self.filename_input.setText(clean_title)
+            self.filename_input.selectAll()
+            self.add_log(f"✅ Vídeo analisado: {title}")
+            self.add_log(f"💡 Nome sugerido para o arquivo: {clean_title}")
         
         self.video_info_widget.setVisible(True)
-        
-        self.add_log(f"✅ Vídeo analisado: {title}")
-        self.add_log(f"💡 Nome sugerido para o arquivo: {clean_title}")
     
     def on_video_info_error(self, error):
         """Callback quando ocorre erro ao buscar informações"""
